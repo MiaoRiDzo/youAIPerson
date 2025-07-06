@@ -1,0 +1,221 @@
+{
+  "main": {
+    "id": "8dac0a3c8008542b",
+    "type": "split",
+    "children": [
+      {
+        "id": "64790a7e7e9821a0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ae141139e0720f87",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Описание проекта.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Описание проекта"
+            }
+          },
+          {
+            "id": "c3c833f5cb13c311",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "1 Промпт.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "1 Промпт"
+            }
+          },
+          {
+            "id": "23aba33e5c871191",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Описание проекта.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Описание проекта"
+            }
+          },
+          {
+            "id": "54ab6c98e25d3930",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "1 Промпт.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "1 Промпт"
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a972cc11e9152e4c",
+    "type": "split",
+    "children": [
+      {
+        "id": "21dd9f3c0f593351",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6cad41c7666ae51f",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "87116c51c1cfcc15",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "12b99d900147612e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "122b5047e8453156",
+    "type": "split",
+    "children": [
+      {
+        "id": "ff65778f7d897939",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "849e0afbdaa6682b",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "1 Промпт.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for 1 Промпт"
+            }
+          },
+          {
+            "id": "d72bae543ff6cb10",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "1 Промпт.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from 1 Промпт"
+            }
+          },
+          {
+            "id": "4ab24b7f72031328",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "949dad39ad1c9456",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "1 Промпт.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of 1 Промпт"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "54ab6c98e25d3930",
+  "lastOpenFiles": [
+    "Промпт 3.md",
+    "Описание проекта.md",
+    "2 промпт.md",
+    "1 Промпт.md"
+  ]
+}
