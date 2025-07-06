@@ -1,5 +1,6 @@
-from sqlalchemy import BigInteger, String, ForeignKey, func, TIMESTAMP
+from sqlalchemy import BigInteger, String, ForeignKey, func, TIMESTAMP, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from datetime import datetime
 
 
 class Base(DeclarativeBase):
@@ -14,6 +15,7 @@ class User(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP, 
         server_default=func.now(),
@@ -33,6 +35,7 @@ class Hook(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id'))
     text: Mapped[str] = mapped_column(String(1000), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP, 
         server_default=func.now(),
