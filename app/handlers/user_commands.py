@@ -9,14 +9,14 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 import json
 
-from app.database.models import User, Hook
+from app.database.models import User, Hook, BotPersonality
 from app.services.gemini_service import analyze_and_manage_hooks, generate_assistant_reply
 
 router = Router()
 
-# --- FSM States for Role Management ---
-class RoleStates(StatesGroup):
-    waiting_for_new_role = State()
+# --- FSM States for Personality Management ---
+class PersonalityStates(StatesGroup):
+    waiting_for_new_personality = State()
 
 # --- Helper Functions ---
 def parse_expires_at(expires_at_str: str | None) -> datetime | None:
@@ -45,6 +45,12 @@ def convert_google_api_object(obj):
         return [convert_google_api_object(item) for item in obj]
     else:
         return obj
+
+async def get_bot_personality(session: AsyncSession) -> str | None:
+    """Get current bot personality"""
+    result = await session.execute(select(BotPersonality).order_by(BotPersonality.id.desc()).limit(1))
+    personality = result.scalar_one_or_none()
+    return personality.personality_prompt if personality else None
 
 # --- /start Command Handler ---
 @router.message(Command("start"))
@@ -82,6 +88,21 @@ async def cmd_start(message: Message, session: AsyncSession):
         print(f"❌ Ошибка в команде /start: {e}")
         await message.answer("Произошла ошибка при обработке команды. Попробуйте позже.")
 
+# --- FSM Message Handler for Personality Editing ---
+@router.message(PersonalityStates.waiting_for_new_personality)
+async def handle_new_personality(message: Message, session: AsyncSession, state: FSMContext):
+    """Handle new personality input"""
+    new_personality = message.text
+    
+    # Create new personality record
+    new_personality_record = BotPersonality(personality_prompt=new_personality)
+    session.add(new_personality_record)
+    await session.commit()
+    
+    await state.clear()
+    await message.answer(f"✅ Личность бота обновлена:\n\n{new_personality}")
+    return
+
 # --- General Message Handler ---
 @router.message(F.text & ~F.text.startswith('/'))
 async def handle_message(
@@ -117,11 +138,14 @@ async def handle_message(
     )
     existing_hooks = [hook.text for hook in result.scalars().all()]
     
+    # Get bot personality
+    personality_prompt = await get_bot_personality(session)
+    
     # Analyze message and manage hooks
     function_call = await analyze_and_manage_hooks(
         message.text,
         existing_hooks,
-        role_prompt=user.role_prompt
+        personality_prompt=personality_prompt
     )
     
     if function_call:
@@ -192,7 +216,7 @@ async def handle_message(
             await session.rollback()
     
     # Generate and send response
-    response_text = await generate_assistant_reply(message.text, existing_hooks)
+    response_text = await generate_assistant_reply(message.text, existing_hooks, personality_prompt)
     await message.answer(response_text)
 
 # --- /clean Command Handler ---
@@ -231,81 +255,42 @@ async def show_hooks(message: Message, session: AsyncSession):
     
     await message.answer(hooks_text)
 
-# --- /role Command Handler ---
-@router.message(Command("role"))
-async def show_role(message: Message, session: AsyncSession):
-    """Show user's current role and provide management options"""
-    user_id = message.from_user.id
+# --- /personality Command Handler ---
+@router.message(Command("personality"))
+async def show_personality(message: Message, session: AsyncSession):
+    """Show bot's current personality and provide management options"""
+    personality_prompt = await get_bot_personality(session)
     
-    # Get user
-    result = await session.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-    
-    if not user or not user.role_prompt:
-        role_text = "🎭 У вас пока не установлена роль."
+    if not personality_prompt:
+        personality_text = "🎭 У бота пока не установлена личность."
     else:
-        role_text = f"🎭 Ваша текущая роль:\n\n{user.role_prompt}"
+        personality_text = f"🎭 Текущая личность бота:\n\n{personality_prompt}"
     
     # Create inline keyboard
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Очистить роль", callback_data="clear_role"),
-                InlineKeyboardButton(text="Изменить роль", callback_data="edit_role")
+                InlineKeyboardButton(text="Очистить личность", callback_data="clear_personality"),
+                InlineKeyboardButton(text="Изменить личность", callback_data="edit_personality")
             ]
         ]
     )
     
-    await message.answer(role_text, reply_markup=keyboard)
+    await message.answer(personality_text, reply_markup=keyboard)
 
 # --- Callback Handlers ---
-@router.callback_query(F.data == "clear_role")
-async def clear_role_callback(callback: CallbackQuery, session: AsyncSession):
-    """Clear user's role"""
-    user_id = callback.from_user.id
-    
-    result = await session.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-    
-    if user:
-        user.role_prompt = None
-        await session.commit()
-    
-    await callback.message.edit_text("✅ Роль очищена.")
-
-@router.callback_query(F.data == "edit_role")
-async def edit_role_callback(callback: CallbackQuery, state: FSMContext):
-    """Start role editing process"""
-    await state.set_state(RoleStates.waiting_for_new_role)
-    await callback.message.edit_text("✍️ Напишите вашу новую роль. Например:\n\n• 'Я программист Python'\n• 'Я студент медицинского вуза'\n• 'Я люблю путешествовать и фотографировать'")
-
-# --- FSM Message Handler for Role Editing ---
-@router.message(RoleStates.waiting_for_new_role)
-async def handle_new_role(message: Message, session: AsyncSession, state: FSMContext):
-    """Handle new role input"""
-    user_id = message.from_user.id
-    new_role = message.text
-    
-    # Get or create user
-    result = await session.execute(
-        select(User).where(User.user_id == user_id)
-    )
-    user = result.scalar_one_or_none()
-    
-    if not user:
-        user = User(
-            user_id=user_id,
-            username=message.from_user.username,
-            first_name=message.from_user.first_name
-        )
-        session.add(user)
-    
-    user.role_prompt = new_role
+@router.callback_query(F.data == "clear_personality")
+async def clear_personality_callback(callback: CallbackQuery, session: AsyncSession):
+    """Clear bot's personality"""
+    # Create new personality record with null prompt
+    new_personality = BotPersonality(personality_prompt=None)
+    session.add(new_personality)
     await session.commit()
     
-    await state.clear()
-    await message.answer(f"✅ Роль обновлена:\n\n{new_role}") 
+    await callback.message.edit_text("✅ Личность бота очищена.")
+
+@router.callback_query(F.data == "edit_personality")
+async def edit_personality_callback(callback: CallbackQuery, state: FSMContext):
+    """Start personality editing process"""
+    await state.set_state(PersonalityStates.waiting_for_new_personality)
+    await callback.message.edit_text("✍️ Напишите новую личность для бота. Например:\n\n• 'Я дружелюбный и веселый ассистент'\n• 'Я строгий и профессиональный консультант'\n• 'Я творческий и креативный помощник'") 

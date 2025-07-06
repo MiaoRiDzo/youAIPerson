@@ -15,7 +15,6 @@ class User(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    role_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP, 
         server_default=func.now(),
@@ -26,6 +25,28 @@ class User(Base):
     
     def __repr__(self) -> str:
         return f"User(user_id={self.user_id}, username={self.username}, first_name={self.first_name})"
+
+
+class BotPersonality(Base):
+    """Bot personality model for storing bot's personality settings"""
+    __tablename__ = "bot_personality"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    personality_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP, 
+        server_default=func.now(),
+        nullable=False
+    )
+    updated_at: Mapped[str] = mapped_column(
+        TIMESTAMP, 
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+    
+    def __repr__(self) -> str:
+        return f"BotPersonality(id={self.id}, personality_prompt='{self.personality_prompt[:50] if self.personality_prompt else None}...')"
 
 
 class Hook(Base):

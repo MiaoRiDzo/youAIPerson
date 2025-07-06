@@ -70,16 +70,16 @@ model = genai.GenerativeModel(
 )
 
 # --- Main Analysis Function ---
-async def analyze_and_manage_hooks(message_text: str, existing_hooks: list[str], chat_session=None, role_prompt: str | None = None):
+async def analyze_and_manage_hooks(message_text: str, existing_hooks: list[str], chat_session=None, personality_prompt: str | None = None):
     """
     Analyzes user message and decides whether to call the memory management function.
     """
-    role_instruction = ""
-    if role_prompt:
-        role_instruction = f"Роль пользователя: {role_prompt}\n\n"
+    personality_instruction = ""
+    if personality_prompt:
+        personality_instruction = f"Личность бота: {personality_prompt}\n\n"
     
     system_prompt = (
-        f"{role_instruction}Ты — ядро памяти ассистента. Твоя задача — анализировать сообщение пользователя в контексте "
+        f"{personality_instruction}Ты — ядро памяти ассистента. Твоя задача — анализировать сообщение пользователя в контексте "
         "фактов, которые ты уже знаешь о нём (`existing_hooks`). На основе нового сообщения решай, нужно ли "
         "добавить, обновить или удалить какие-либо факты, чтобы профиль пользователя был актуальным. "
         "Вызывай функцию `manage_user_memory_hooks` для выполнения этих действий. "
@@ -113,17 +113,21 @@ async def analyze_and_manage_hooks(message_text: str, existing_hooks: list[str],
     return None
 
 # --- Gemini Assistant Reply Function ---
-async def generate_assistant_reply(message_text: str, existing_hooks: list[str]) -> str:
+async def generate_assistant_reply(message_text: str, existing_hooks: list[str], personality_prompt: str | None = None) -> str:
     """
-    Генерирует ответ ассистента с учетом памяти пользователя.
+    Генерирует ответ ассистента с учетом памяти пользователя и личности бота.
     """
+    personality_instruction = ""
+    if personality_prompt:
+        personality_instruction = f"Твоя личность: {personality_prompt}\n\n"
+    
     system_prompt = (
-        "Ты — ассистент. Вот что ты знаешь о пользователе: "
+        f"{personality_instruction}Ты — ассистент. Вот что ты знаешь о пользователе: "
         f"{existing_hooks if existing_hooks else 'Пока ничего не известно.'} "
         "Используй эти факты для персонализации ответа. "
         "Если в памяти есть пожелания пользователя к стилю общения, обязательно учитывай их. "
         "Если пользователь выражает новые пожелания к стилю, запомни это как отдельный факт для будущих ответов. "
-        "Не придумывай свою личность — твой стиль должен формироваться только на основе памяти о пользователе."
+        "Не придумывай свою личность — твой стиль должен формироваться только на основе памяти о пользователе и установленной личности."
     )
     print("\n===== [Gemini Assistant Reply] =====")
     print(f"[PROMPT]:\n{system_prompt}\n\n[USER]: {message_text}")
