@@ -32,6 +32,7 @@ class BotPersonality(Base):
     __tablename__ = "bot_personality"
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id'))
     personality_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(
         TIMESTAMP, 
@@ -44,9 +45,10 @@ class BotPersonality(Base):
         onupdate=func.now(),
         nullable=False
     )
+    user: Mapped["User"] = relationship()
     
     def __repr__(self) -> str:
-        return f"BotPersonality(id={self.id}, personality_prompt='{self.personality_prompt[:50] if self.personality_prompt else None}...')"
+        return f"BotPersonality(id={self.id}, user_id={self.user_id}, personality_prompt='{self.personality_prompt[:50] if self.personality_prompt else None}...')"
 
 
 class Hook(Base):

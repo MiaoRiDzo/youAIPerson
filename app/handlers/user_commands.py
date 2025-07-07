@@ -47,9 +47,14 @@ def convert_google_api_object(obj):
     else:
         return obj
 
-async def get_bot_personality(session: AsyncSession) -> str | None:
-    """Get current bot personality"""
-    result = await session.execute(select(BotPersonality).order_by(BotPersonality.id.desc()).limit(1))
+async def get_bot_personality(session: AsyncSession, user_id: int) -> str | None:
+    """Get current bot personality for a user"""
+    result = await session.execute(
+        select(BotPersonality)
+        .where(BotPersonality.user_id == user_id)
+        .order_by(BotPersonality.id.desc())
+        .limit(1)
+    )
     personality = result.scalar_one_or_none()
     return personality.personality_prompt if personality else None
 
@@ -97,14 +102,13 @@ async def cmd_start(message: Message, session: AsyncSession):
 async def handle_new_personality(message: Message, session: AsyncSession, state: FSMContext):
     """Handle new personality input"""
     new_personality = message.text
-    
-    # Create new personality record
-    new_personality_record = BotPersonality(personality_prompt=new_personality)
+    user_id = message.from_user.id
+    # Create new personality record for this user
+    new_personality_record = BotPersonality(user_id=user_id, personality_prompt=new_personality)
     session.add(new_personality_record)
     await session.commit()
-    
     await state.clear()
-    await message.answer(f"✅ Личность бота обновлена:\n\n{new_personality}")
+    await message.answer(f"✅ Личность бота обновлена индивидуально для вас:\n\n{new_personality}")
     return
 
 # --- General Message Handler ---
@@ -152,8 +156,8 @@ async def handle_message(
     )
     existing_hooks = [hook.text for hook in result.scalars().all()]
     
-    # Get bot personality
-    personality_prompt = await get_bot_personality(session)
+    # Get bot personality индивидуально
+    personality_prompt = await get_bot_personality(session, user_id)
     
     # Analyze message and manage hooks
     function_call = await analyze_and_manage_hooks(
@@ -287,12 +291,12 @@ async def show_hooks(message: Message, session: AsyncSession):
 @router.message(Command("personality"))
 async def show_personality(message: Message, session: AsyncSession):
     """Show bot's current personality and provide management options"""
-    personality_prompt = await get_bot_personality(session)
-    
+    user_id = message.from_user.id
+    personality_prompt = await get_bot_personality(session, user_id)
     if not personality_prompt:
-        personality_text = "🎭 У бота пока не установлена личность."
+        personality_text = "🎭 У бота пока не установлена личность для вас."
     else:
-        personality_text = f"🎭 Текущая личность бота:\n\n{personality_prompt}"
+        personality_text = f"🎭 Ваша индивидуальная личность бота:\n\n{personality_prompt}"
     
     # Create inline keyboard
     keyboard = InlineKeyboardMarkup(
@@ -309,19 +313,17 @@ async def show_personality(message: Message, session: AsyncSession):
 # --- Callback Handlers ---
 @router.callback_query(F.data == "clear_personality")
 async def clear_personality_callback(callback: CallbackQuery, session: AsyncSession):
-    """Clear bot's personality"""
-    # Create new personality record with null prompt
-    new_personality = BotPersonality(personality_prompt=None)
+    """Clear bot's personality for this user"""
+    user_id = callback.from_user.id
+    new_personality = BotPersonality(user_id=user_id, personality_prompt=None)
     session.add(new_personality)
     await session.commit()
-    
-    await callback.message.edit_text("✅ Личность бота очищена.")
+    await callback.message.edit_text("✅ Ваша индивидуальная личность бота очищена.")
 
 @router.callback_query(F.data == "edit_personality")
 async def edit_personality_callback(callback: CallbackQuery, state: FSMContext):
-    """Start personality editing process"""
     await state.set_state(PersonalityStates.waiting_for_new_personality)
-    await callback.message.edit_text("✍️ Напишите новую личность для бота. Например:\n\n• 'Я дружелюбный и веселый ассистент'\n• 'Я строгий и профессиональный консультант'\n• 'Я творческий и креативный помощник'")
+    await callback.message.edit_text("✍️ Напишите новую индивидуальную личность для бота. Например:\n\n• 'Я дружелюбный и веселый ассистент'\n• 'Я строгий и профессиональный консультант'\n• 'Я творческий и креативный помощник'")
 
 @router.message(Command("debug"))
 async def debug_info(message: Message, session: AsyncSession):
@@ -346,7 +348,7 @@ async def debug_info(message: Message, session: AsyncSession):
     )
     existing_hooks = [hook.text for hook in result.scalars().all()]
     # Личность
-    personality_prompt = await get_bot_personality(session)
+    personality_prompt = await get_bot_personality(session, user_id)
     # Формируем полный prompt как в generate_assistant_reply
     personality_instruction = f"Твоя личность: {personality_prompt}\n\n" if personality_prompt else ""
     system_prompt = (
