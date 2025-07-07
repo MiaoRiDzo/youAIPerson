@@ -386,4 +386,17 @@ async def debug_info(message: Message, session: AsyncSession):
         debug_text += f"Точное число токенов (Gemini): {real_tokens}\n"
     else:
         debug_text += f"Оценка токенов: {approx_tokens}\n"
-    await message.answer(debug_text) 
+    await message.answer(debug_text)
+
+@router.message(Command("help"))
+async def help_command(message: Message):
+    """Показать справку по командам бота"""
+    help_text = (
+        "/start - Начать работу с ботом, регистрация пользователя\n"
+        "/clean - Очистить историю чата (бот забудет весь предыдущий диалог)\n"
+        "/hooks - Показать все факты, которые бот запомнил о вас\n"
+        "/personality - Показать или изменить вашу индивидуальную личность бота\n"
+        "/debug - Показать отладочную информацию (история, факты, длина prompt, токены)\n"
+        "/help - Краткая справка по возможностям бота\n"
+    )
+    await message.answer(help_text) 
