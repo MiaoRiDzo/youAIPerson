@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 import json
 
 from app.database.models import User, Hook, BotPersonality
-from app.services.gemini_service import analyze_and_manage_hooks, generate_assistant_reply
+from app.services.gemini_service import analyze_and_manage_hooks, generate_assistant_reply, model
+import google.generativeai as genai
 
 router = Router()
 
@@ -320,4 +321,67 @@ async def clear_personality_callback(callback: CallbackQuery, session: AsyncSess
 async def edit_personality_callback(callback: CallbackQuery, state: FSMContext):
     """Start personality editing process"""
     await state.set_state(PersonalityStates.waiting_for_new_personality)
-    await callback.message.edit_text("✍️ Напишите новую личность для бота. Например:\n\n• 'Я дружелюбный и веселый ассистент'\n• 'Я строгий и профессиональный консультант'\n• 'Я творческий и креативный помощник'") 
+    await callback.message.edit_text("✍️ Напишите новую личность для бота. Например:\n\n• 'Я дружелюбный и веселый ассистент'\n• 'Я строгий и профессиональный консультант'\n• 'Я творческий и креативный помощник'")
+
+@router.message(Command("debug"))
+async def debug_info(message: Message, session: AsyncSession):
+    """Показать отладочную информацию по prompt и истории чата"""
+    user_id = message.from_user.id
+    # История чата
+    history = chat_histories.get(user_id, [])
+    history_text = ""
+    for msg in history:
+        if msg['role'] == 'user':
+            history_text += f"Пользователь: {msg['text']}\n"
+        elif msg['role'] == 'assistant':
+            history_text += f"Ассистент: {msg['text']}\n"
+    # Факты
+    result = await session.execute(
+        select(Hook)
+        .where(Hook.user_id == user_id)
+        .where(
+            (Hook.expires_at.is_(None)) | 
+            (Hook.expires_at > datetime.now(timezone.utc))
+        )
+    )
+    existing_hooks = [hook.text for hook in result.scalars().all()]
+    # Личность
+    personality_prompt = await get_bot_personality(session)
+    # Формируем полный prompt как в generate_assistant_reply
+    personality_instruction = f"Твоя личность: {personality_prompt}\n\n" if personality_prompt else ""
+    system_prompt = (
+        f"{personality_instruction}Ты — ассистент. Вот что ты знаешь о пользователе: "
+        f"{existing_hooks if existing_hooks else 'Пока ничего не известно.'} "
+        "Используй эти факты для персонализации ответа, но только если они действительно релевантны текущему вопросу или ситуации. "
+        "Не используй информацию из памяти и истории чата без необходимости — применяй её только если это уместно и помогает дать более точный, полезный или персонализированный ответ. "
+        "Если в памяти есть пожелания пользователя к стилю общения, обязательно учитывай их. "
+        "Если пользователь выражает новые пожелания к стилю, запомни это как отдельный факт для будущих ответов. "
+        "Не придумывай свою личность — твой стиль должен формироваться только на основе памяти о пользователе и установленной личности.\n\n"
+        f"История чата:\n{history_text}"
+    )
+    # Реальный подсчёт токенов через Gemini API
+    real_tokens = None
+    try:
+        # Gemini ожидает список сообщений в формате Content
+        from google.generativeai.types import Content, Part
+        contents = [Content(role="system", parts=[Part(text=system_prompt)])]
+        token_info = await model.count_tokens_async(contents)
+        real_tokens = token_info.total_tokens if hasattr(token_info, 'total_tokens') else None
+    except Exception as e:
+        real_tokens = None
+    # Оценка токенов (очень грубо: 1 токен ≈ 4 символа)
+    prompt_len = len(system_prompt)
+    approx_tokens = prompt_len // 4
+    # Формируем debug-ответ
+    debug_text = (
+        f"🛠️ Debug info:\n"
+        f"История сообщений: {len(history)}\n"
+        f"Фактов о пользователе: {len(existing_hooks)}\n"
+        f"Личность бота: {'есть' if personality_prompt else 'нет'}\n"
+        f"Длина prompt: {prompt_len} символов\n"
+    )
+    if real_tokens is not None:
+        debug_text += f"Точное число токенов (Gemini): {real_tokens}\n"
+    else:
+        debug_text += f"Оценка токенов: {approx_tokens}\n"
+    await message.answer(debug_text) 
