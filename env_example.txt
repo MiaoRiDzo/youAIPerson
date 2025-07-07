@@ -1,5 +1,0 @@
-TELEGRAM_BOT_TOKEN='ВАШ_ТОКЕН_ЗДЕСЬ'
-GEMINI_API_KEY='ВАШ_GEMINI_API_КЛЮЧ_ЗДЕСЬ'
-# Альтернативно можно использовать GOOGLE_API_KEY
-# GOOGLE_API_KEY='ВАШ_GEMINI_API_КЛЮЧ_ЗДЕСЬ'
-GEMINI_MODEL_NAME='gemini-1.5-flash-latest' 

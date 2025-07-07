@@ -52,6 +52,9 @@ async def get_bot_personality(session: AsyncSession) -> str | None:
     personality = result.scalar_one_or_none()
     return personality.personality_prompt if personality else None
 
+# === Глобальное хранилище истории чата ===
+chat_histories = {}
+
 # --- /start Command Handler ---
 @router.message(Command("start"))
 async def cmd_start(message: Message, session: AsyncSession):
@@ -111,6 +114,16 @@ async def handle_message(
 ):
     """Handle general user messages and update memory"""
     user_id = message.from_user.id
+    
+    # --- История чата ---
+    if user_id not in chat_histories:
+        chat_histories[user_id] = []
+    chat_histories[user_id].append({
+        'role': 'user',
+        'text': message.text
+    })
+    # Ограничим историю 20 сообщениями (можно изменить)
+    chat_histories[user_id] = chat_histories[user_id][-20:]
     
     # Get or create user
     result = await session.execute(
@@ -216,13 +229,27 @@ async def handle_message(
             await session.rollback()
     
     # Generate and send response
-    response_text = await generate_assistant_reply(message.text, existing_hooks, personality_prompt)
+    response_text = await generate_assistant_reply(
+        message.text,
+        existing_hooks,
+        personality_prompt,
+        chat_history=chat_histories[user_id]
+    )
+    # Добавляем ответ ассистента в историю
+    chat_histories[user_id].append({
+        'role': 'assistant',
+        'text': response_text
+    })
+    chat_histories[user_id] = chat_histories[user_id][-20:]
     await message.answer(response_text)
 
 # --- /clean Command Handler ---
 @router.message(Command("clean"))
 async def clean_chat_history(message: Message):
     """Clear chat history for the user"""
+    user_id = message.from_user.id
+    if user_id in chat_histories:
+        chat_histories[user_id] = []
     await message.answer("✅ История чата очищена. Начинаем новый диалог!")
 
 # --- /hooks Command Handler ---

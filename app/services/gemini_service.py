@@ -113,21 +113,32 @@ async def analyze_and_manage_hooks(message_text: str, existing_hooks: list[str],
     return None
 
 # --- Gemini Assistant Reply Function ---
-async def generate_assistant_reply(message_text: str, existing_hooks: list[str], personality_prompt: str | None = None) -> str:
+async def generate_assistant_reply(message_text: str, existing_hooks: list[str], personality_prompt: str | None = None, chat_history=None) -> str:
     """
-    Генерирует ответ ассистента с учетом памяти пользователя и личности бота.
+    Генерирует ответ ассистента с учетом памяти пользователя, личности бота и истории чата.
     """
     personality_instruction = ""
     if personality_prompt:
         personality_instruction = f"Твоя личность: {personality_prompt}\n\n"
     
+    # Формируем историю чата для prompt
+    history_text = ""
+    if chat_history:
+        for msg in chat_history:
+            if msg['role'] == 'user':
+                history_text += f"Пользователь: {msg['text']}\n"
+            elif msg['role'] == 'assistant':
+                history_text += f"Ассистент: {msg['text']}\n"
+    
     system_prompt = (
         f"{personality_instruction}Ты — ассистент. Вот что ты знаешь о пользователе: "
         f"{existing_hooks if existing_hooks else 'Пока ничего не известно.'} "
-        "Используй эти факты для персонализации ответа. "
+        "Используй эти факты для персонализации ответа, но только если они действительно релевантны текущему вопросу или ситуации. "
+        "Не используй информацию из памяти и истории чата без необходимости — применяй её только если это уместно и помогает дать более точный, полезный или персонализированный ответ. "
         "Если в памяти есть пожелания пользователя к стилю общения, обязательно учитывай их. "
         "Если пользователь выражает новые пожелания к стилю, запомни это как отдельный факт для будущих ответов. "
-        "Не придумывай свою личность — твой стиль должен формироваться только на основе памяти о пользователе и установленной личности."
+        "Не придумывай свою личность — твой стиль должен формироваться только на основе памяти о пользователе и установленной личности.\n\n"
+        f"История чата:\n{history_text}"
     )
     print("\n===== [Gemini Assistant Reply] =====")
     print(f"[PROMPT]:\n{system_prompt}\n\n[USER]: {message_text}")
